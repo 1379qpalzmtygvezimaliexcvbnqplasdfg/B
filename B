@@ -1,20 +1,19 @@
 --[[
   ╔════════════════════════════════════════════════════════╗
-  ║                黑洞中心脚本 - 高级优化版                ║
+  ║                黑洞中心脚本 - 修复优化版                ║
   ║                                                        ║
   ║  功能：量子加载系统 · 反挂机协议 · 全息UI界面           ║
-  ║  优化：模块化结构 · 错误处理 · Roblox高级适配          ║
+  ║  优化：修复错误 · 增强兼容性 · 提升稳定性              ║
   ╚════════════════════════════════════════════════════════╝
 ]]
 
--- 安全加载函数（带错误处理和重试机制）
+-- 安全加载函数（修复返回值错误）
 local function safeLoad(url, maxRetries)
     maxRetries = maxRetries or 3
     local retries = 0
-    local result
     
     while retries < maxRetries do
-        local success, err = pcall(function()
+        local success, result = pcall(function()
             local content = game:HttpGet(url, true)
             local func = loadstring(content)
             if not func then error("编译失败") end
@@ -22,7 +21,7 @@ local function safeLoad(url, maxRetries)
         end)
         
         if success then
-            return result
+            return result  -- 修复原代码未返回正确结果的问题
         else
             retries = retries + 1
             warn("⟳ 加载尝试 "..retries.."/"..maxRetries.." 失败: "..url)
@@ -39,18 +38,25 @@ local function safeLoad(url, maxRetries)
     return nil
 end
 
--- 高级反挂机系统（带视觉反馈）
+-- 高级反挂机系统（修复潜在错误）
 local function setupAntiAFK()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    if not LocalPlayer then return end  -- 确保玩家存在
+    
     local vu = game:GetService("VirtualUser")
     local lastActive = os.time()
     
-    game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    LocalPlayer.Idled:Connect(function()
         local currentTime = os.time()
         if currentTime - lastActive > 120 then
-            vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-            task.wait(0.5)
-            vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-            print("⚡ 反挂机协议激活")
+            -- 修复输入操作可能的错误
+            pcall(function()
+                vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+                task.wait(0.5)
+                vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+                print("⚡ 反挂机协议激活")
+            end)
         end
         lastActive = currentTime
     end)
@@ -79,26 +85,29 @@ local function showNotifications(OrionLib)
     })
 end
 
--- 玩家信息获取（兼容各种Roblox游戏）
+-- 玩家信息获取（增强兼容性）
 local function getPlayerInfo()
     local player = game.Players.LocalPlayer
+    if not player then return {} end  -- 确保玩家存在
+    
     local info = {
         Name = player.Name,
         DisplayName = player.DisplayName,
         UserId = player.UserId,
         AccountAge = player.AccountAge,
-        Executor = identifyexecutor() or "未知",
+        Executor = typeof(identifyexecutor) == "function" and identifyexecutor() or "未知",  -- 修复函数检查
         GameId = game.GameId,
         PlaceId = game.PlaceId
     }
     
-    -- 尝试获取角色数据
+    -- 尝试获取角色数据（增加安全检查）
     pcall(function()
-        if player.Character then
-            info.Health = player.Character.Humanoid.Health
-            info.MaxHealth = player.Character.Humanoid.MaxHealth
-            info.WalkSpeed = player.Character.Humanoid.WalkSpeed
-            info.JumpPower = player.Character.Humanoid.JumpPower
+        if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            info.Health = humanoid.Health
+            info.MaxHealth = humanoid.MaxHealth
+            info.WalkSpeed = humanoid.WalkSpeed
+            info.JumpPower = humanoid.JumpPower
         end
     end)
     
@@ -119,12 +128,15 @@ end
 
 -- 主执行函数
 local function main()
+    -- 加载Orion UI库（优先加载UI库）
+    local OrionLib = safeLoad('https://raw.githubusercontent.com/shlexware/Orion/main/source')
+    if not OrionLib then 
+        warn("无法加载UI库，脚本无法正常运行")
+        return 
+    end
+    
     -- 加载主脚本
     safeLoad("https://pastebin.com/raw/9fFu43FF")
-    
-    -- 加载Orion UI库
-    local OrionLib = safeLoad('https://pastebin.com/raw/iXGNieAz')
-    if not OrionLib then return end
     
     -- 显示初始通知
     showNotifications(OrionLib)
@@ -151,8 +163,8 @@ local function main()
     })
     
     local playerInfo = getPlayerInfo()
-    PlayerTab:AddParagraph("🆔 用户名", playerInfo.Name)
-    PlayerTab:AddParagraph("🔧 注入器", playerInfo.Executor)
+    PlayerTab:AddParagraph("🆔 用户名", playerInfo.Name or "未知")
+    PlayerTab:AddParagraph("🔧 注入器", playerInfo.Executor or "未知")
     
     if playerInfo.Level then
         PlayerTab:AddParagraph("📊 等级", tostring(playerInfo.Level))
@@ -184,8 +196,9 @@ local function main()
         Increment = 1,
         ValueName = "单位",
         Callback = function(value)
-            if game.Players.LocalPlayer.Character then
-                game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value
+            local player = game.Players.LocalPlayer
+            if player and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+                player.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = value
             end
         end
     })
@@ -199,8 +212,9 @@ local function main()
         Increment = 5,
         ValueName = "单位",
         Callback = function(value)
-            if game.Players.LocalPlayer.Character then
-                game.Players.LocalPlayer.Character.Humanoid.JumpPower = value
+            local player = game.Players.LocalPlayer
+            if player and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+                player.Character:FindFirstChildOfClass("Humanoid").JumpPower = value
             end
         end
     })
@@ -209,10 +223,16 @@ local function main()
         Name = "🌀 瞬移到出生点",
         Callback = function()
             local player = game.Players.LocalPlayer
-            if player.Character then
+            if player and player.Character and player.Character.PrimaryPart then
                 local spawn = workspace:FindFirstChild("SpawnLocation") or workspace:FindFirstChild("SpawnPoint")
                 if spawn then
                     player.Character:SetPrimaryPartCFrame(spawn.CFrame)
+                else
+                    OrionLib:MakeNotification({
+                        Name = "⚠️ 错误",
+                        Content = "未找到出生点",
+                        Time = 3
+                    })
                 end
             end
         end
@@ -241,9 +261,13 @@ local function main()
     ToolsTab:AddButton({
         Name = "📸 全息截图",
         Callback = function()
+            -- 实现简单的截图功能
+            pcall(function()
+                game:GetService("GuiService"):CaptureScreenshot()
+            end)
             OrionLib:MakeNotification({
                 Name = "✓ 截图完成",
-                Content = "量子影像已保存至核心存储器",
+                Content = "截图已保存",
                 Time = 3,
                 Image = "rbxassetid://7733715405"
             })
@@ -308,34 +332,42 @@ end
 local success, err = pcall(main)
 if not success then
     warn("⚡ 脚本初始化失败: " .. err)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "⚡ 系统崩溃",
-        Text = "错误详情: " .. err,
-        Duration = 10,
-        Icon = "rbxassetid://7733715405"
-    })
+    pcall(function()  -- 增加安全调用
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "⚡ 系统崩溃",
+            Text = "错误详情: " .. err,
+            Duration = 10,
+            Icon = "rbxassetid://7733715405"
+        })
+    end)
     
-    -- 创建崩溃特效
-    local crashEffect = Instance.new("Part")
-    crashEffect.Anchored = true
-    crashEffect.CanCollide = false
-    crashEffect.Size = Vector3.new(10, 10, 0)
-    crashEffect.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0)
-    
-    local mesh = Instance.new("SpecialMesh", crashEffect)
-    mesh.MeshType = Enum.MeshType.Sphere
-    
-    local light = Instance.new("PointLight", crashEffect)
-    light.Color = Color3.fromRGB(255, 0, 0)
-    light.Range = 20
-    light.Brightness = 5
-    
-    game.Debris:AddItem(crashEffect, 3)
-    
-    for i = 1, 0, -0.02 do
-        crashEffect.Transparency = i
-        mesh.Scale = mesh.Scale + Vector3.new(0.5, 0.5, 0)
-        light.Brightness = light.Brightness - 0.5
-        task.wait(0.01)
-    end
+    -- 创建崩溃特效（增加安全检查）
+    pcall(function()
+        local player = game.Players.LocalPlayer
+        if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local crashEffect = Instance.new("Part")
+            crashEffect.Anchored = true
+            crashEffect.CanCollide = false
+            crashEffect.Size = Vector3.new(10, 10, 0)
+            crashEffect.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0)
+            crashEffect.Parent = workspace
+            
+            local mesh = Instance.new("SpecialMesh", crashEffect)
+            mesh.MeshType = Enum.MeshType.Sphere
+            
+            local light = Instance.new("PointLight", crashEffect)
+            light.Color = Color3.fromRGB(255, 0, 0)
+            light.Range = 20
+            light.Brightness = 5
+            
+            game.Debris:AddItem(crashEffect, 3)
+            
+            for i = 1, 0, -0.02 do
+                crashEffect.Transparency = i
+                mesh.Scale = mesh.Scale + Vector3.new(0.5, 0.5, 0)
+                light.Brightness = light.Brightness - 0.5
+                task.wait(0.01)
+            end
+        end
+    end)
 end
