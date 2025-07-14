@@ -64,7 +64,7 @@ local function main()
     setupAntiAFK()
     
     -- 加载Orion UI库
-    local OrionLib = safeLoad('https://pastebin.com/raw/iXGNieAz')
+    local OrionLib = safeLoad('https://pastebin.com/raw/ZGu8URpn')
     if not OrionLib then return end
     
     -- 创建主窗口
