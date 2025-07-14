@@ -1,154 +1,136 @@
 --[[
   ╔════════════════════════════════════════════════════════╗
-  ║              █▀▀ █░█ █▀▀ █▀▀ █▀▀ ▀█▀ █▀▀ █▀▄              ║
-  ║              █▄▄ █▀█ ██▄ █▀░ ██▄ ░█░ ██▄ █▄▀              ║
-  ║                                                            ║
-  ║               黑洞中心脚本优化版 - 赛博科技感               ║
-  ║               Build: 量子核心 v2.1.4                       ║
+  ║                黑洞中心脚本 - 高级优化版                ║
+  ║                                                        ║
+  ║  功能：量子加载系统 · 反挂机协议 · 全息UI界面           ║
+  ║  优化：模块化结构 · 错误处理 · Roblox高级适配          ║
   ╚════════════════════════════════════════════════════════╝
-  功能：量子加载系统 · 反挂机协议 · 全息UI界面
-  优化：模块化结构 · 错误处理 · 赛博科技感UI
---]]
+]]
 
--- ███████╗██╗   ██╗███████╗████████╗███████╗███╗   ███╗
--- ██╔════╝██║   ██║██╔════╝╚══██╔══╝██╔════╝████╗ ████║
--- █████╗  ██║   ██║███████╗   ██║   █████╗  ██╔████╔██║
--- ██╔══╝  ██║   ██║╚════██║   ██║   ██╔══╝  ██║╚██╔╝██║
--- ██║     ╚██████╔╝███████║   ██║   ███████╗██║ ╚═╝ ██║
--- ╚═╝      ╚═════╝ ╚══════╝   ╚═╝   ╚══════╝╚═╝     ╚═╝
-
-local function neonPulse()
-    local pulse = Instance.new("Part")
-    pulse.Anchored = true
-    pulse.CanCollide = false
-    pulse.Size = Vector3.new(50, 50, 0)
-    pulse.Transparency = 1
-    pulse.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, -3, 0)
+-- 安全加载函数（带错误处理和重试机制）
+local function safeLoad(url, maxRetries)
+    maxRetries = maxRetries or 3
+    local retries = 0
+    local result
     
-    local mesh = Instance.new("SpecialMesh", pulse)
-    mesh.MeshType = Enum.MeshType.Sphere
-    
-    local light = Instance.new("PointLight", pulse)
-    light.Color = Color3.fromRGB(0, 255, 255)
-    light.Range = 30
-    light.Brightness = 5
-    
-    game.Debris:AddItem(pulse, 1)
-    
-    for i = 1, 0, -0.05 do
-        pulse.Transparency = i
-        mesh.Scale = mesh.Scale + Vector3.new(0.5, 0.5, 0)
-        light.Brightness = light.Brightness - 0.25
-        task.wait(0.02)
+    while retries < maxRetries do
+        local success, err = pcall(function()
+            local content = game:HttpGet(url, true)
+            local func = loadstring(content)
+            if not func then error("编译失败") end
+            return func()
+        end)
+        
+        if success then
+            return result
+        else
+            retries = retries + 1
+            warn("⟳ 加载尝试 "..retries.."/"..maxRetries.." 失败: "..url)
+            task.wait(1)
+        end
     end
+    
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "⚠️ 加载错误",
+        Text = "无法加载资源: "..url,
+        Duration = 5,
+        Icon = "rbxassetid://7733715405"
+    })
+    return nil
 end
 
--- ███████╗ █████╗ ███████╗███████╗███████╗██╗   ██╗
--- ██╔════╝██╔══██╗██╔════╝██╔════╝██╔════╝╚██╗ ██╔╝
--- █████╗  ███████║█████╗  █████╗  █████╗   ╚████╔╝ 
--- ██╔══╝  ██╔══██║██╔══╝  ██╔══╝  ██╔══╝    ╚██╔╝  
--- ███████╗██║  ██║██║     ██║     ███████╗   ██║   
--- ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝     ╚══════╝   ╚═╝   
-
-local function safeLoad(url)
-    local success, result = pcall(function()
-        local content = game:HttpGet(url, true)
-        local func, err = loadstring(content)
-        if not func then error(err) end
-        return func()
-    end)
-    
-    if not success then
-        warn("⟳ 量子加载失败: " .. url)
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "⟠ 系统异常",
-            Text = "量子通道中断: " .. tostring(result),
-            Duration = 5,
-            Icon = "rbxassetid://7733715405"
-        })
-    end
-    return result
-end
-
--- ███████╗███╗   ██╗████████╗██╗
--- ██╔════╝████╗  ██║╚══██╔══╝██║
--- █████╗  ██╔██╗ ██║   ██║   ██║
--- ██╔══╝  ██║╚██╗██║   ██║   ██║
--- ███████╗██║ ╚████║   ██║   ███████╗
--- ╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝
-
+-- 高级反挂机系统（带视觉反馈）
 local function setupAntiAFK()
     local vu = game:GetService("VirtualUser")
+    local lastActive = os.time()
+    
     game:GetService("Players").LocalPlayer.Idled:Connect(function()
-        vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-        neonPulse()
+        local currentTime = os.time()
+        if currentTime - lastActive > 120 then
+            vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+            task.wait(0.5)
+            vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+            print("⚡ 反挂机协议激活")
+        end
+        lastActive = currentTime
     end)
-    print("⟳ 反挂机协议激活")
+    
+    print("✓ 反挂机系统已启用")
 end
 
--- ███╗   ██╗ ██████╗ ████████╗██╗███████╗██╗ ██████╗ █████╗ ████████╗██╗ ██████╗ ███╗   ██╗
--- ████╗  ██║██╔═══██╗╚══██╔══╝██║██╔════╝██║██╔════╝██╔══██╗╚══██╔══╝██║██╔═══██╗████╗  ██║
--- ██╔██╗ ██║██║   ██║   ██║   ██║█████╗  ██║██║     ███████║   ██║   ██║██║   ██║██╔██╗ ██║
--- ██║╚██╗██║██║   ██║   ██║   ██║██╔══╝  ██║██║     ██╔══██║   ██║   ██║██║   ██║██║╚██╗██║
--- ██║ ╚████║╚██████╔╝   ██║   ██║██║     ██║╚██████╗██║  ██║   ██║   ██║╚██████╔╝██║ ╚████║
--- ╚═╝  ╚═══╝ ╚═════╝    ╚═╝   ╚═╝╚═╝     ╚═╝ ╚═════╝╚═╝  ╚═╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
-
-local function showNotifications()
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "⚡ 量子核心启动",
-        Text = "正在初始化系统...",
-        Duration = 3,
-        Icon = "rbxassetid://7733715405"
+-- 主界面通知（使用Orion UI）
+local function showNotifications(OrionLib)
+    if not OrionLib then return end
+    
+    OrionLib:MakeNotification({
+        Name = "⚡ 脚本启动",
+        Content = "正在初始化量子核心...",
+        Time = 3,
+        Image = "rbxassetid://7733715405"
     })
     
     task.wait(1.5)
     
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "⟳ 系统状态",
-        Text = "反挂机协议已激活 · 量子通道稳定",
-        Duration = 4,
-        Icon = "rbxassetid://7733715405"
-    })
-    
-    task.wait(1)
-    
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "✓ 初始化完成",
-        Text = "全息界面加载完毕",
-        Duration = 3,
-        Icon = "rbxassetid://7733715405"
+    OrionLib:MakeNotification({
+        Name = "✓ 系统状态",
+        Content = "反挂机协议已激活 · 量子通道稳定",
+        Time = 4,
+        Image = "rbxassetid://7733715405"
     })
 end
 
--- ███╗   ███╗ █████╗ ██╗███╗   ██╗
--- ████╗ ████║██╔══██╗██║████╗  ██║
--- ██╔████╔██║███████║██║██╔██╗ ██║
--- ██║╚██╔╝██║██╔══██║██║██║╚██╗██║
--- ██║ ╚═╝ ██║██║  ██║██║██║ ╚████║
--- ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝
+-- 玩家信息获取（兼容各种Roblox游戏）
+local function getPlayerInfo()
+    local player = game.Players.LocalPlayer
+    local info = {
+        Name = player.Name,
+        DisplayName = player.DisplayName,
+        UserId = player.UserId,
+        AccountAge = player.AccountAge,
+        Executor = identifyexecutor() or "未知",
+        GameId = game.GameId,
+        PlaceId = game.PlaceId
+    }
+    
+    -- 尝试获取角色数据
+    pcall(function()
+        if player.Character then
+            info.Health = player.Character.Humanoid.Health
+            info.MaxHealth = player.Character.Humanoid.MaxHealth
+            info.WalkSpeed = player.Character.Humanoid.WalkSpeed
+            info.JumpPower = player.Character.Humanoid.JumpPower
+        end
+    end)
+    
+    -- 尝试获取游戏特定数据
+    pcall(function()
+        if game:GetService("ReplicatedStorage"):FindFirstChild("GetPlayerData") then
+            local data = game:GetService("ReplicatedStorage").GetPlayerData:InvokeServer(player)
+            if data then
+                info.Level = data.Level or data.Lvl
+                info.Coins = data.Coins or data.Money
+                info.Rank = data.Rank or data.Title
+            end
+        end
+    end)
+    
+    return info
+end
 
+-- 主执行函数
 local function main()
-    -- 量子加载核心脚本
+    -- 加载主脚本
     safeLoad("https://pastebin.com/raw/9fFu43FF")
     
-    -- 显示全息通知
-    showNotifications()
-    
-    -- 激活反挂机协议
-    setupAntiAFK()
-    
-    -- 加载量子UI库
-    local OrionLib = safeLoad('https://pastebin.com/raw/your_orion_lib_code_here')
+    -- 加载Orion UI库
+    local OrionLib = safeLoad('https://raw.githubusercontent.com/shlexware/Orion/main/source')
     if not OrionLib then return end
     
-    -- ██╗   ██╗██╗████████╗ ██████╗ ██╗   ██╗███████╗
-    -- ██║   ██║██║╚══██╔══╝██╔═══██╗██║   ██║██╔════╝
-    -- ██║   ██║██║   ██║   ██║   ██║██║   ██║███████╗
-    -- ╚██╗ ██╔╝██║   ██║   ██║   ██║██║   ██║╚════██║
-    --  ╚████╔╝ ██║   ██║   ╚██████╔╝╚██████╔╝███████║
-    --   ╚═══╝  ╚═╝   ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝
+    -- 显示初始通知
+    showNotifications(OrionLib)
+    
+    -- 启动反挂机
+    setupAntiAFK()
     
     -- 创建赛博科技感主窗口
     local Window = OrionLib:MakeWindow({
@@ -158,72 +140,87 @@ local function main()
         IntroEnabled = true,
         IntroText = "量子核心启动中...",
         IntroIcon = "rbxassetid://7734068321",
-        ConfigFolder = "QuantumCoreConfig",
-        Theme = {
-            Main = Color3.fromRGB(10, 15, 30),
-            Second = Color3.fromRGB(20, 25, 45),
-            Stroke = Color3.fromRGB(0, 150, 150),
-            Divider = Color3.fromRGB(0, 100, 100),
-            Text = Color3.fromRGB(0, 255, 255),
-            TextDark = Color3.fromRGB(180, 240, 255)
-        }
+        ConfigFolder = "QuantumCoreConfig"
     })
-    
-    -- 信息标签页
-    local InfoTab = Window:MakeTab({
-        Name = "⚡ 系统信息",
-        Icon = "rbxassetid://7734068321",
-        PremiumOnly = false
-    })
-    
-    InfoTab:AddParagraph("⟠ 量子核心 v2.1.4", "▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰")
-    InfoTab:AddParagraph("⟳ 运行状态", "量子通道稳定 · 反挂机协议激活")
-    InfoTab:AddParagraph("⟳ 系统时间", os.date("%Y-%m-%d %H:%M:%S"))
     
     -- 玩家信息标签页
     local PlayerTab = Window:MakeTab({
-        Name = "👤 玩家控制",
+        Name = "👤 玩家信息",
         Icon = "rbxassetid://7733960981",
         PremiumOnly = false
     })
     
-    local player = game.Players.LocalPlayer
-    PlayerTab:AddParagraph("⟳ 用户名", player.Name)
-    PlayerTab:AddParagraph("⟳ 注入器", identifyexecutor() or "未知量子通道")
+    local playerInfo = getPlayerInfo()
+    PlayerTab:AddParagraph("🆔 用户名", playerInfo.Name)
+    PlayerTab:AddParagraph("🔧 注入器", playerInfo.Executor)
     
-    PlayerTab:AddSlider({
-        Name = "⚡ 光速移动",
+    if playerInfo.Level then
+        PlayerTab:AddParagraph("📊 等级", tostring(playerInfo.Level))
+    end
+    
+    if playerInfo.Coins then
+        PlayerTab:AddParagraph("💰 金币", tostring(playerInfo.Coins))
+    end
+    
+    if playerInfo.Health then
+        PlayerTab:AddParagraph("❤️ 生命值", string.format("%d/%d", playerInfo.Health, playerInfo.MaxHealth))
+    end
+    
+    PlayerTab:AddParagraph("🌐 游戏ID", tostring(playerInfo.GameId))
+    
+    -- 移动控制标签页
+    local MovementTab = Window:MakeTab({
+        Name = "🚀 移动控制",
+        Icon = "rbxassetid://7734068321",
+        PremiumOnly = false
+    })
+    
+    MovementTab:AddSlider({
+        Name = "⚡ 移动速度",
         Min = 16,
         Max = 200,
         Default = 16,
         Color = Color3.fromRGB(0, 200, 200),
         Increment = 1,
-        ValueName = "速度",
+        ValueName = "单位",
         Callback = function(value)
-            if player.Character then
-                player.Character.Humanoid.WalkSpeed = value
+            if game.Players.LocalPlayer.Character then
+                game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = value
             end
         end
     })
     
-    PlayerTab:AddSlider({
-        Name = "🔼 量子跳跃",
+    MovementTab:AddSlider({
+        Name = "🔼 跳跃高度",
         Min = 50,
         Max = 200,
         Default = 50,
         Color = Color3.fromRGB(0, 200, 200),
         Increment = 5,
-        ValueName = "高度",
+        ValueName = "单位",
         Callback = function(value)
-            if player.Character then
-                player.Character.Humanoid.JumpPower = value
+            if game.Players.LocalPlayer.Character then
+                game.Players.LocalPlayer.Character.Humanoid.JumpPower = value
             end
         end
     })
     
-    -- 工具标签页
+    MovementTab:AddButton({
+        Name = "🌀 瞬移到出生点",
+        Callback = function()
+            local player = game.Players.LocalPlayer
+            if player.Character then
+                local spawn = workspace:FindFirstChild("SpawnLocation") or workspace:FindFirstChild("SpawnPoint")
+                if spawn then
+                    player.Character:SetPrimaryPartCFrame(spawn.CFrame)
+                end
+            end
+        end
+    })
+    
+    -- 游戏工具标签页
     local ToolsTab = Window:MakeTab({
-        Name = "🛠️ 量子工具",
+        Name = "🛠️ 游戏工具",
         Icon = "rbxassetid://7734068321",
         PremiumOnly = false
     })
@@ -233,23 +230,10 @@ local function main()
         Callback = function()
             safeLoad("https://raw.githubusercontent.com/boyscp/scriscriptsc/main/bbn.lua")
             OrionLib:MakeNotification({
-                Name = "⚡ 提示系统激活",
+                Name = "✓ 提示系统激活",
                 Content = "玩家进出通知功能已启动",
                 Time = 3,
-                Icon = "rbxassetid://7733715405"
-            })
-        end
-    })
-    
-    ToolsTab:AddButton({
-        Name = "🌀 量子脉冲",
-        Callback = function()
-            neonPulse()
-            OrionLib:MakeNotification({
-                Name = "⚡ 脉冲释放",
-                Content = "量子能量场已激活",
-                Time = 3,
-                Icon = "rbxassetid://7733715405"
+                Image = "rbxassetid://7733715405"
             })
         end
     })
@@ -258,34 +242,75 @@ local function main()
         Name = "📸 全息截图",
         Callback = function()
             OrionLib:MakeNotification({
-                Name = "⚡ 截图完成",
+                Name = "✓ 截图完成",
                 Content = "量子影像已保存至核心存储器",
                 Time = 3,
-                Icon = "rbxassetid://7733715405"
+                Image = "rbxassetid://7733715405"
             })
         end
     })
     
+    ToolsTab:AddToggle({
+        Name = "🌟 夜视模式",
+        Default = false,
+        Callback = function(value)
+            if value then
+                game.Lighting.Ambient = Color3.new(1, 1, 1)
+                game.Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
+            else
+                game.Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
+                game.Lighting.OutdoorAmbient = Color3.new(0.5, 0.5, 0.5)
+            end
+        end
+    })
+    
+    -- 系统信息标签页
+    local SystemTab = Window:MakeTab({
+        Name = "⚙️ 系统信息",
+        Icon = "rbxassetid://7734068321",
+        PremiumOnly = false
+    })
+    
+    SystemTab:AddParagraph("⟠ 黑洞中心 v2.1", "▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰")
+    SystemTab:AddParagraph("⟳ 运行状态", "量子通道稳定 · 反挂机协议激活")
+    SystemTab:AddParagraph("🕒 系统时间", os.date("%Y-%m-%d %H:%M:%S"))
+    
+    local fpsLabel = SystemTab:AddParagraph("📊 FPS", "计算中...")
+    local memLabel = SystemTab:AddParagraph("💾 内存", "计算中...")
+    
+    -- 性能监控
+    spawn(function()
+        local RunService = game:GetService("RunService")
+        local lastUpdate = os.clock()
+        local frames = 0
+        
+        while true do
+            frames = frames + 1
+            if os.clock() - lastUpdate >= 1 then
+                local fps = math.floor(frames / (os.clock() - lastUpdate))
+                local mem = math.floor(collectgarbage("count") / 1024)
+                
+                fpsLabel:Set("📊 FPS: "..tostring(fps))
+                memLabel:Set(string.format("💾 内存: %.2f MB", mem))
+                
+                frames = 0
+                lastUpdate = os.clock()
+            end
+            RunService.RenderStepped:Wait()
+        end
+    end)
+    
     -- 初始化量子UI
     OrionLib:Init()
-    
-    -- 启动特效
-    neonPulse()
 end
 
--- ███████╗██╗  ██╗███████╗ ██████╗██╗   ██╗████████╗██╗ ██████╗ ███╗   ██╗
--- ██╔════╝╚██╗██╔╝██╔════╝██╔════╝██║   ██║╚══██╔══╝██║██╔═══██╗████╗  ██║
--- █████╗   ╚███╔╝ █████╗  ██║     ██║   ██║   ██║   ██║██║   ██║██╔██╗ ██║
--- ██╔══╝   ██╔██╗ ██╔══╝  ██║     ██║   ██║   ██║   ██║██║   ██║██║╚██╗██║
--- ███████╗██╔╝ ██╗███████╗╚██████╗╚██████╔╝   ██║   ██║╚██████╔╝██║ ╚████║
--- ╚══════╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝    ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
-
+-- 错误保护的主执行
 local success, err = pcall(main)
 if not success then
-    warn("⚡ 量子核心崩溃: " .. err)
+    warn("⚡ 脚本初始化失败: " .. err)
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = "⚡ 系统崩溃",
-        Text = "量子核心异常: " .. err,
+        Text = "错误详情: " .. err,
         Duration = 10,
         Icon = "rbxassetid://7733715405"
     })
@@ -294,22 +319,22 @@ if not success then
     local crashEffect = Instance.new("Part")
     crashEffect.Anchored = true
     crashEffect.CanCollide = false
-    crashEffect.Size = Vector3.new(30, 30, 0)
-    crashEffect.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, -3, 0)
+    crashEffect.Size = Vector3.new(10, 10, 0)
+    crashEffect.CFrame = game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0)
     
     local mesh = Instance.new("SpecialMesh", crashEffect)
     mesh.MeshType = Enum.MeshType.Sphere
     
     local light = Instance.new("PointLight", crashEffect)
     light.Color = Color3.fromRGB(255, 0, 0)
-    light.Range = 50
-    light.Brightness = 10
+    light.Range = 20
+    light.Brightness = 5
     
     game.Debris:AddItem(crashEffect, 3)
     
     for i = 1, 0, -0.02 do
         crashEffect.Transparency = i
-        mesh.Scale = mesh.Scale + Vector3.new(1, 1, 0)
+        mesh.Scale = mesh.Scale + Vector3.new(0.5, 0.5, 0)
         light.Brightness = light.Brightness - 0.5
         task.wait(0.01)
     end
