@@ -1,245 +1,154 @@
--- 加载黑洞中心脚本
-loadstring(game:HttpGet("https://pastebin.com/raw/9fFu43FF"))()
+--[[
+  黑洞中心脚本优化版
+  功能：加载外部脚本、反挂机机制、Orion UI库界面
+  优化点：
+  1. 模块化结构
+  2. 错误处理
+  3. 代码注释
+  4. 用户体验优化
+--]]
 
--- 初始化通知系统
-game:GetService("StarterGui"):SetCore("SendNotification", {
-    Title = "⚡黑洞中心⚡",
-    Text = "脚本已启动，请耐心等待加载",
-    Icon = "rbxassetid://7734068321",
-    Duration = 4
-})
-
--- 开启反挂机系统
-print("反挂机系统已开启")
-local vu = game:GetService("VirtualUser")
-game:GetService("Players").LocalPlayer.Idled:Connect(function()
-    vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-    wait(1)
-    vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-end)
-
--- 加载现代化UI库
-local OrionLib = loadstring(game:HttpGet('https://pastebin.com/raw/iXGNieAz'))()
-
--- 创建主窗口
-local Window = OrionLib:MakeWindow({
-    Name = "⚡黑洞中心(BS)⚡", 
-    HidePremium = false, 
-    SaveConfig = true,
-    IntroText = "⚡黑洞中心启动⚡",
-    IntroIcon = "rbxassetid://7734068321",
-    ConfigFolder = "黑洞中心"
-})
-
--- 关于我们选项卡
-local AboutTab = Window:MakeTab({
-    Name = "关于我们",
-    Icon = "rbxassetid://7734068321",
-    PremiumOnly = false
-})
-
--- 创建现代化卡片布局
-local function CreateInfoCard(title, content, icon)
-    local card = Instance.new("Frame")
-    card.Name = "Card"
-    card.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    card.BorderSizePixel = 0
-    card.Size = UDim2.new(1, -20, 0, 80)
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = card
-    
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(80, 120, 200)
-    stroke.Thickness = 2
-    stroke.Parent = card
-    
-    if icon then
-        local iconImg = Instance.new("ImageLabel")
-        iconImg.Name = "Icon"
-        iconImg.Image = icon
-        iconImg.Size = UDim2.new(0, 40, 0, 40)
-        iconImg.Position = UDim2.new(0, 15, 0.5, -20)
-        iconImg.BackgroundTransparency = 1
-        iconImg.Parent = card
-    end
-    
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Name = "Title"
-    titleLabel.Text = title
-    titleLabel.TextColor3 = Color3.fromRGB(180, 220, 255)
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.TextSize = 16
-    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Size = UDim2.new(1, -70, 0.4, 0)
-    titleLabel.Position = UDim2.new(0, 70, 0.1, 0)
-    titleLabel.Parent = card
-    
-    local contentLabel = Instance.new("TextLabel")
-    contentLabel.Name = "Content"
-    contentLabel.Text = content
-    contentLabel.TextColor3 = Color3.fromRGB(180, 180, 220)
-    contentLabel.Font = Enum.Font.Gotham
-    contentLabel.TextSize = 14
-    contentLabel.TextXAlignment = Enum.TextXAlignment.Left
-    contentLabel.TextYAlignment = Enum.TextYAlignment.Top
-    contentLabel.BackgroundTransparency = 1
-    contentLabel.Size = UDim2.new(1, -70, 0.5, 0)
-    contentLabel.Position = UDim2.new(0, 70, 0.5, 0)
-    contentLabel.Parent = card
-    
-    return card
-end
-
--- 添加关于我们内容
-AboutTab:AddParagraph("❤️BS脚本❤️", "本脚本专注于通用功能和黑洞类游戏优化")
-local card1 = CreateInfoCard("兼容性说明", "阿尔宙斯注入器可能无法使用本脚本", "rbxassetid://7734068321")
-card1.Parent = AboutTab:GetGUI()
-
-local card2 = CreateInfoCard("作者信息", "作者: 老大二世\nQQ: 1545959422\n副作者QQ: 1710433791", "rbxassetid://7734068321")
-card2.Parent = AboutTab:GetGUI()
-
-local card3 = CreateInfoCard("更新信息", "原作者已停止更新\n现由新团队维护开发", "rbxassetid://7734068321")
-card3.Parent = AboutTab:GetGUI()
-
-local card4 = CreateInfoCard("联系方式", "QQ群: 813485162\n现作者QQ: 2770967217", "rbxassetid://7734068321")
-card4.Parent = AboutTab:GetGUI()
-
--- 创建现代化按钮
-local function CreateModernButton(parent, text, callback, icon)
-    local button = Instance.new("TextButton")
-    button.Name = text
-    button.Text = text
-    button.Size = UDim2.new(1, -20, 0, 50)
-    button.BackgroundColor3 = Color3.fromRGB(40, 80, 160)
-    button.TextColor3 = Color3.white
-    button.Font = Enum.Font.GothamBold
-    button.TextSize = 16
-    button.AutoButtonColor = false
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
-    corner.Parent = button
-    
-    if icon then
-        local iconImg = Instance.new("ImageLabel")
-        iconImg.Name = "Icon"
-        iconImg.Image = icon
-        iconImg.Size = UDim2.new(0, 30, 0, 30)
-        iconImg.Position = UDim2.new(0, 15, 0.5, -15)
-        iconImg.BackgroundTransparency = 1
-        iconImg.Parent = button
-    end
-    
-    -- 悬停效果
-    button.MouseEnter:Connect(function()
-        game:GetService("TweenService"):Create(button, TweenInfo.new(0.2), {
-            BackgroundColor3 = Color3.fromRGB(60, 120, 220),
-            Size = UDim2.new(1, -15, 0, 55)
-        }):Play()
+-- 安全加载函数（带错误处理）
+local function safeLoad(url)
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet(url))()
     end)
-    
-    button.MouseLeave:Connect(function()
-        game:GetService("TweenService"):Create(button, TweenInfo.new(0.2), {
-            BackgroundColor3 = Color3.fromRGB(40, 80, 160),
-            Size = UDim2.new(1, -20, 0, 50)
-        }):Play()
-    end)
-    
-    -- 点击效果
-    button.MouseButton1Down:Connect(function()
-        game:GetService("TweenService"):Create(button, TweenInfo.new(0.1), {
-            BackgroundColor3 = Color3.fromRGB(20, 60, 140)
-        }):Play()
-    end)
-    
-    button.MouseButton1Up:Connect(function()
-        game:GetService("TweenService"):Create(button, TweenInfo.new(0.2), {
-            BackgroundColor3 = Color3.fromRGB(40, 80, 160)
-        }):Play()
-        callback()
-    end)
-    
-    button.Parent = parent
-    return button
-end
-
--- 设置选项卡
-local SettingsTab = Window:MakeTab({
-    Name = "系统设置",
-    Icon = "rbxassetid://7734068321",
-    PremiumOnly = false
-})
-
--- 用户信息卡片
-local userCard = CreateInfoCard("用户信息", 
-    string.format("用户名: %s\n注入器: %s\n服务器ID: %s", 
-        game.Players.LocalPlayer.Name,
-        identifyexecutor() or "未知注入器",
-        game.GameId
-    ), 
-    "rbxassetid://7734068321"
-)
-userCard.Parent = SettingsTab:GetGUI()
-
--- 跳跃高度设置
-local jumpContainer = Instance.new("Frame")
-jumpContainer.Name = "JumpContainer"
-jumpContainer.BackgroundTransparency = 1
-jumpContainer.Size = UDim2.new(1, -20, 0, 60)
-jumpContainer.Parent = SettingsTab:GetGUI()
-
-local jumpLabel = Instance.new("TextLabel")
-jumpLabel.Name = "JumpLabel"
-jumpLabel.Text = "跳跃高度设置:"
-jumpLabel.TextColor3 = Color3.fromRGB(180, 220, 255)
-jumpLabel.Font = Enum.Font.GothamBold
-jumpLabel.TextSize = 16
-jumpLabel.TextXAlignment = Enum.TextXAlignment.Left
-jumpLabel.BackgroundTransparency = 1
-jumpLabel.Size = UDim2.new(0.4, 0, 1, 0)
-jumpLabel.Position = UDim2.new(0, 0, 0, 0)
-jumpLabel.Parent = jumpContainer
-
-local jumpBox = Instance.new("TextBox")
-jumpBox.Name = "JumpBox"
-jumpBox.PlaceholderText = "输入跳跃高度..."
-jumpBox.Text = ""
-jumpBox.Size = UDim2.new(0.6, -10, 0.7, 0)
-jumpBox.Position = UDim2.new(0.4, 0, 0.15, 0)
-jumpBox.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
-jumpBox.TextColor3 = Color3.white
-jumpBox.Font = Enum.Font.Gotham
-jumpBox.TextSize = 14
-jumpBox.ClearTextOnFocus = false
-
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 8)
-corner.Parent = jumpBox
-
-jumpBox.FocusLost:Connect(function()
-    local value = tonumber(jumpBox.Text)
-    if value and value > 0 then
-        pcall(function()
-            game.Players.LocalPlayer.Character.Humanoid.JumpPower = value
-            OrionLib:MakeNotification({
-                Name = "设置成功",
-                Content = "跳跃高度已设置为: " .. value,
-                Time = 3
-            })
-        end)
-    else
-        OrionLib:MakeNotification({
-            Name = "设置失败",
-            Content = "请输入有效的跳跃高度数值",
-            Time = 3
+    if not success then
+        warn("加载失败: " .. url)
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "加载错误",
+            Text = "无法加载资源: " .. url,
+            Duration = 5
         })
     end
-end)
+    return result
+end
 
-jumpBox.Parent = jumpContainer
+-- 反挂机系统
+local function setupAntiAFK()
+    local vu = game:GetService("VirtualUser")
+    game:GetService("Players").LocalPlayer.Idled:Connect(function()
+        vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    end)
+    print("反挂机系统已开启")
+end
 
--- 添加玩家进出提示按钮
-CreateModernButton(SettingsTab:GetGUI(), "开启玩家进出提示
+-- 主界面通知
+local function showNotifications()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "脚本启动",
+        Text = "请耐心等待加载",
+        Duration = 4
+    })
+    
+    task.wait(2)
+    
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "系统状态",
+        Text = "正在加载（反挂机已开启）",
+        Duration = 5
+    })
+end
+
+-- 主执行函数
+local function main()
+    -- 加载主脚本
+    safeLoad("https://pastebin.com/raw/9fFu43FF")
+    
+    -- 显示初始通知
+    showNotifications()
+    
+    -- 启动反挂机
+    setupAntiAFK()
+    
+    -- 加载Orion UI库
+    local OrionLib = safeLoad('https://pastebin.com/raw/iXGNieAz')
+    if not OrionLib then return end
+    
+    -- 创建主窗口
+    local Window = OrionLib:MakeWindow({
+        Name = "黑洞中心(BS)",
+        HidePremium = false,
+        SaveConfig = true,
+        IntroText = "黑洞中心启动",
+        ConfigFolder = "黑洞中心"
+    })
+    
+    -- 信息介绍标签页
+    local InfoTab = Window:MakeTab({
+        Name = "公告",
+        Icon = "rbxassetid://7734068321",
+        PremiumOnly = false
+    })
+    
+    InfoTab:AddParagraph("❤️ BS脚本 ❤️", "本脚本主要更新通用和黑洞类功能")
+    InfoTab:AddParagraph("作者信息", "游戏名: 老大二世\nQQ: 1545959422\n副作者QQ: 1710433791")
+    InfoTab:AddParagraph("更新状态", "原作者已停止更新\n现作者QQ: 2770967217")
+    InfoTab:AddParagraph("交流群", "Q群: 813485162")
+    
+    -- 系统设置标签页
+    local SettingsTab = Window:MakeTab({
+        Name = "系统设置",
+        Icon = "rbxassetid://7734068321",
+        PremiumOnly = false
+    })
+    
+    -- 用户信息展示
+    local player = game.Players.LocalPlayer
+    SettingsTab:AddParagraph("用户名", player.Name)
+    SettingsTab:AddParagraph("注入器", identifyexecutor() or "未知")
+    SettingsTab:AddParagraph("服务器ID", tostring(game.GameId))
+    
+    -- 功能按钮
+    SettingsTab:AddButton({
+        Name = "开启玩家进出提示",
+        Callback = function()
+            safeLoad("https://raw.githubusercontent.com/boyscp/scriscriptsc/main/bbn.lua")
+            OrionLib:MakeNotification({
+                Name = "提示系统已开启",
+                Content = "玩家进出通知功能已激活",
+                Time = 3
+            })
+        end
+    })
+    
+    -- 跳跃高度设置
+    SettingsTab:AddTextbox({
+        Name = "设置跳跃高度",
+        Default = "50",
+        TextDisappear = true,
+        Callback = function(Value)
+            local num = tonumber(Value)
+            if num and player.Character and player.Character:FindFirstChild("Humanoid") then
+                player.Character.Humanoid.JumpPower = num
+                OrionLib:MakeNotification({
+                    Name = "设置成功",
+                    Content = "跳跃高度已设置为: " .. num,
+                    Time = 3
+                })
+            else
+                OrionLib:MakeNotification({
+                    Name = "设置失败",
+                    Content = "请输入有效数字或确保角色存在",
+                    Time = 3
+                })
+            end
+        end
+    })
+    
+    -- 初始化UI
+    OrionLib:Init()
+end
+
+-- 错误保护的主执行
+local success, err = pcall(main)
+if not success then
+    warn("脚本初始化失败: " .. err)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "致命错误",
+        Text = "脚本启动失败: " .. err,
+        Duration = 10
+    })
+end
