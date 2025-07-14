@@ -123,7 +123,7 @@ local function main()
     safeLoad("https://pastebin.com/raw/9fFu43FF")
     
     -- 加载Orion UI库
-    local OrionLib = safeLoad('https://raw.githubusercontent.com/shlexware/Orion/main/source')
+    local OrionLib = safeLoad('https://pastebin.com/raw/iXGNieAz')
     if not OrionLib then return end
     
     -- 显示初始通知
