@@ -1,373 +1,637 @@
---[[
-  ╔════════════════════════════════════════════════════════╗
-  ║                黑洞中心脚本 - 修复优化版                ║
-  ║                                                        ║
-  ║  功能：量子加载系统 · 反挂机协议 · 全息UI界面           ║
-  ║  优化：修复错误 · 增强兼容性 · 提升稳定性              ║
-  ╚════════════════════════════════════════════════════════╝
-]]
+-- 使用示例（与之前优化后的脚本兼容）
+local OrionLib = loadstring(game:HttpGet('local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local HttpService = game:GetService("HttpService")
 
--- 安全加载函数（修复返回值错误）
-local function safeLoad(url, maxRetries)
-    maxRetries = maxRetries or 3
-    local retries = 0
-    
-    while retries < maxRetries do
-        local success, result = pcall(function()
-            local content = game:HttpGet(url, true)
-            local func = loadstring(content)
-            if not func then error("编译失败") end
-            return func()
-        end)
-        
-        if success then
-            return result  -- 修复原代码未返回正确结果的问题
-        else
-            retries = retries + 1
-            warn("⟳ 加载尝试 "..retries.."/"..maxRetries.." 失败: "..url)
-            task.wait(1)
-        end
-    end
-    
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = "⚠️ 加载错误",
-        Text = "无法加载资源: "..url,
-        Duration = 5,
-        Icon = "rbxassetid://7733715405"
-    })
-    return nil
-end
+-- 改进的主题系统
+local OrionLib = {
+    Elements = {},
+    ThemeObjects = {},
+    Connections = {},
+    Flags = {},
+    Themes = {
+        Default = {
+            Main = Color3.fromRGB(28, 28, 40),
+            Second = Color3.fromRGB(40, 40, 55),
+            Stroke = Color3.fromRGB(70, 70, 90),
+            Divider = Color3.fromRGB(50, 50, 70),
+            Text = Color3.fromRGB(220, 200, 255),
+            TextDark = Color3.fromRGB(180, 170, 220),
+            Accent = Color3.fromRGB(140, 110, 255)
+        },
+        Dark = {
+            Main = Color3.fromRGB(20, 20, 30),
+            Second = Color3.fromRGB(30, 30, 45),
+            Stroke = Color3.fromRGB(60, 60, 80),
+            Divider = Color3.fromRGB(40, 40, 60),
+            Text = Color3.fromRGB(200, 180, 240),
+            TextDark = Color3.fromRGB(160, 150, 200),
+            Accent = Color3.fromRGB(120, 90, 220)
+        },
+        Light = {
+            Main = Color3.fromRGB(240, 240, 245),
+            Second = Color3.fromRGB(220, 220, 230),
+            Stroke = Color3.fromRGB(180, 180, 190),
+            Divider = Color3.fromRGB(200, 200, 210),
+            Text = Color3.fromRGB(40, 40, 60),
+            TextDark = Color3.fromRGB(80, 80, 100),
+            Accent = Color3.fromRGB(100, 80, 200)
+        }
+    },
+    SelectedTheme = "Default",
+    Folder = nil,
+    SaveCfg = false
+}
 
--- 高级反挂机系统（修复潜在错误）
-local function setupAntiAFK()
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    if not LocalPlayer then return end  -- 确保玩家存在
-    
-    local vu = game:GetService("VirtualUser")
-    local lastActive = os.time()
-    
-    LocalPlayer.Idled:Connect(function()
-        local currentTime = os.time()
-        if currentTime - lastActive > 120 then
-            -- 修复输入操作可能的错误
-            pcall(function()
-                vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-                task.wait(0.5)
-                vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-                print("⚡ 反挂机协议激活")
-            end)
-        end
-        lastActive = currentTime
+-- 图标加载优化
+local Icons = {}
+local function LoadIcons()
+    local success, response = pcall(function()
+        return HttpService:JSONDecode(game:HttpGetAsync(
+            "https://raw.githubusercontent.com/evoincorp/lucideblox/master/src/modules/util/icons.json"
+        )).icons
     end)
     
-    print("✓ 反挂机系统已启用")
+    if success then
+        Icons = response
+    else
+        warn("Orion Library - Failed to load Feather Icons: " .. tostring(response))
+        -- 回退到本地图标
+        Icons = {
+            settings = "rbxassetid://3926307971",
+            info = "rbxassetid://3926305904",
+            tools = "rbxassetid://3926309567"
+        }
+    end
+end
+LoadIcons()
+
+local function GetIcon(iconName)
+    return Icons[iconName] or iconName
 end
 
--- 主界面通知（使用Orion UI）
-local function showNotifications(OrionLib)
-    if not OrionLib then return end
-    
-    OrionLib:MakeNotification({
-        Name = "⚡ 脚本启动",
-        Content = "正在初始化量子核心...",
-        Time = 3,
-        Image = "rbxassetid://7733715405"
-    })
-    
-    task.wait(1.5)
-    
-    OrionLib:MakeNotification({
-        Name = "✓ 系统状态",
-        Content = "反挂机协议已激活 · 量子通道稳定",
-        Time = 4,
-        Image = "rbxassetid://7733715405"
-    })
+-- 创建主界面
+local Orion = Instance.new("ScreenGui")
+Orion.Name = "OrionUI"
+Orion.ResetOnSpawn = false
+Orion.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+if syn and syn.protect_gui then
+    syn.protect_gui(Orion)
+    Orion.Parent = game:GetService("CoreGui")
+elseif gethui then
+    Orion.Parent = gethui()
+else
+    Orion.Parent = game:GetService("CoreGui")
 end
 
--- 玩家信息获取（增强兼容性）
-local function getPlayerInfo()
-    local player = game.Players.LocalPlayer
-    if not player then return {} end  -- 确保玩家存在
-    
-    local info = {
-        Name = player.Name,
-        DisplayName = player.DisplayName,
-        UserId = player.UserId,
-        AccountAge = player.AccountAge,
-        Executor = typeof(identifyexecutor) == "function" and identifyexecutor() or "未知",  -- 修复函数检查
-        GameId = game.GameId,
-        PlaceId = game.PlaceId
-    }
-    
-    -- 尝试获取角色数据（增加安全检查）
-    pcall(function()
-        if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
-            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-            info.Health = humanoid.Health
-            info.MaxHealth = humanoid.MaxHealth
-            info.WalkSpeed = humanoid.WalkSpeed
-            info.JumpPower = humanoid.JumpPower
-        end
-    end)
-    
-    -- 尝试获取游戏特定数据
-    pcall(function()
-        if game:GetService("ReplicatedStorage"):FindFirstChild("GetPlayerData") then
-            local data = game:GetService("ReplicatedStorage").GetPlayerData:InvokeServer(player)
-            if data then
-                info.Level = data.Level or data.Lvl
-                info.Coins = data.Coins or data.Money
-                info.Rank = data.Rank or data.Title
-            end
-        end
-    end)
-    
-    return info
+-- 清除旧UI
+for _, interface in ipairs(Orion.Parent:GetChildren()) do
+    if interface.Name == Orion.Name and interface ~= Orion then
+        interface:Destroy()
+    end
 end
 
--- 主执行函数
-local function main()
-    -- 加载Orion UI库（优先加载UI库）
-    local OrionLib = safeLoad('https://raw.githubusercontent.com/shlexware/Orion/main/source')
-    if not OrionLib then 
-        warn("无法加载UI库，脚本无法正常运行")
-        return 
-    end
-    
-    -- 加载主脚本
-    safeLoad("https://pastebin.com/raw/9fFu43FF")
-    
-    -- 显示初始通知
-    showNotifications(OrionLib)
-    
-    -- 启动反挂机
-    setupAntiAFK()
-    
-    -- 创建赛博科技感主窗口
-    local Window = OrionLib:MakeWindow({
-        Name = "⟠ 黑洞中心量子控制台",
-        HidePremium = false,
-        SaveConfig = true,
-        IntroEnabled = true,
-        IntroText = "量子核心启动中...",
-        IntroIcon = "rbxassetid://7734068321",
-        ConfigFolder = "QuantumCoreConfig"
-    })
-    
-    -- 玩家信息标签页
-    local PlayerTab = Window:MakeTab({
-        Name = "👤 玩家信息",
-        Icon = "rbxassetid://7733960981",
-        PremiumOnly = false
-    })
-    
-    local playerInfo = getPlayerInfo()
-    PlayerTab:AddParagraph("🆔 用户名", playerInfo.Name or "未知")
-    PlayerTab:AddParagraph("🔧 注入器", playerInfo.Executor or "未知")
-    
-    if playerInfo.Level then
-        PlayerTab:AddParagraph("📊 等级", tostring(playerInfo.Level))
-    end
-    
-    if playerInfo.Coins then
-        PlayerTab:AddParagraph("💰 金币", tostring(playerInfo.Coins))
-    end
-    
-    if playerInfo.Health then
-        PlayerTab:AddParagraph("❤️ 生命值", string.format("%d/%d", playerInfo.Health, playerInfo.MaxHealth))
-    end
-    
-    PlayerTab:AddParagraph("🌐 游戏ID", tostring(playerInfo.GameId))
-    
-    -- 移动控制标签页
-    local MovementTab = Window:MakeTab({
-        Name = "🚀 移动控制",
-        Icon = "rbxassetid://7734068321",
-        PremiumOnly = false
-    })
-    
-    MovementTab:AddSlider({
-        Name = "⚡ 移动速度",
-        Min = 16,
-        Max = 200,
-        Default = 16,
-        Color = Color3.fromRGB(0, 200, 200),
-        Increment = 1,
-        ValueName = "单位",
-        Callback = function(value)
-            local player = game.Players.LocalPlayer
-            if player and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
-                player.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = value
-            end
-        end
-    })
-    
-    MovementTab:AddSlider({
-        Name = "🔼 跳跃高度",
-        Min = 50,
-        Max = 200,
-        Default = 50,
-        Color = Color3.fromRGB(0, 200, 200),
-        Increment = 5,
-        ValueName = "单位",
-        Callback = function(value)
-            local player = game.Players.LocalPlayer
-            if player and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
-                player.Character:FindFirstChildOfClass("Humanoid").JumpPower = value
-            end
-        end
-    })
-    
-    MovementTab:AddButton({
-        Name = "🌀 瞬移到出生点",
-        Callback = function()
-            local player = game.Players.LocalPlayer
-            if player and player.Character and player.Character.PrimaryPart then
-                local spawn = workspace:FindFirstChild("SpawnLocation") or workspace:FindFirstChild("SpawnPoint")
-                if spawn then
-                    player.Character:SetPrimaryPartCFrame(spawn.CFrame)
-                else
-                    OrionLib:MakeNotification({
-                        Name = "⚠️ 错误",
-                        Content = "未找到出生点",
-                        Time = 3
-                    })
+-- 主题管理函数
+function OrionLib:SetTheme(themeName)
+    if self.Themes[themeName] then
+        self.SelectedTheme = themeName
+        for themeType, objects in pairs(self.ThemeObjects) do
+            for _, object in ipairs(objects) do
+                if object and object.Parent then
+                    pcall(function()
+                        local prop = ReturnProperty(object)
+                        if prop then
+                            object[prop] = self.Themes[themeName][themeType]
+                        end
+                    end)
                 end
             end
         end
-    })
-    
-    -- 游戏工具标签页
-    local ToolsTab = Window:MakeTab({
-        Name = "🛠️ 游戏工具",
-        Icon = "rbxassetid://7734068321",
-        PremiumOnly = false
-    })
-    
-    ToolsTab:AddButton({
-        Name = "🔔 玩家进出提示",
-        Callback = function()
-            safeLoad("https://raw.githubusercontent.com/boyscp/scriscriptsc/main/bbn.lua")
-            OrionLib:MakeNotification({
-                Name = "✓ 提示系统激活",
-                Content = "玩家进出通知功能已启动",
-                Time = 3,
-                Image = "rbxassetid://7733715405"
-            })
-        end
-    })
-    
-    ToolsTab:AddButton({
-        Name = "📸 全息截图",
-        Callback = function()
-            -- 实现简单的截图功能
-            pcall(function()
-                game:GetService("GuiService"):CaptureScreenshot()
-            end)
-            OrionLib:MakeNotification({
-                Name = "✓ 截图完成",
-                Content = "截图已保存",
-                Time = 3,
-                Image = "rbxassetid://7733715405"
-            })
-        end
-    })
-    
-    ToolsTab:AddToggle({
-        Name = "🌟 夜视模式",
-        Default = false,
-        Callback = function(value)
-            if value then
-                game.Lighting.Ambient = Color3.new(1, 1, 1)
-                game.Lighting.OutdoorAmbient = Color3.new(1, 1, 1)
-            else
-                game.Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
-                game.Lighting.OutdoorAmbient = Color3.new(0.5, 0.5, 0.5)
-            end
-        end
-    })
-    
-    -- 系统信息标签页
-    local SystemTab = Window:MakeTab({
-        Name = "⚙️ 系统信息",
-        Icon = "rbxassetid://7734068321",
-        PremiumOnly = false
-    })
-    
-    SystemTab:AddParagraph("⟠ 黑洞中心 v2.1", "▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰▰")
-    SystemTab:AddParagraph("⟳ 运行状态", "量子通道稳定 · 反挂机协议激活")
-    SystemTab:AddParagraph("🕒 系统时间", os.date("%Y-%m-%d %H:%M:%S"))
-    
-    local fpsLabel = SystemTab:AddParagraph("📊 FPS", "计算中...")
-    local memLabel = SystemTab:AddParagraph("💾 内存", "计算中...")
-    
-    -- 性能监控
-    spawn(function()
-        local RunService = game:GetService("RunService")
-        local lastUpdate = os.clock()
-        local frames = 0
-        
-        while true do
-            frames = frames + 1
-            if os.clock() - lastUpdate >= 1 then
-                local fps = math.floor(frames / (os.clock() - lastUpdate))
-                local mem = math.floor(collectgarbage("count") / 1024)
-                
-                fpsLabel:Set("📊 FPS: "..tostring(fps))
-                memLabel:Set(string.format("💾 内存: %.2f MB", mem))
-                
-                frames = 0
-                lastUpdate = os.clock()
-            end
-            RunService.RenderStepped:Wait()
-        end
-    end)
-    
-    -- 初始化量子UI
-    OrionLib:Init()
+        return true
+    end
+    return false
 end
 
--- 错误保护的主执行
-local success, err = pcall(main)
-if not success then
-    warn("⚡ 脚本初始化失败: " .. err)
-    pcall(function()  -- 增加安全调用
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "⚡ 系统崩溃",
-            Text = "错误详情: " .. err,
-            Duration = 10,
-            Icon = "rbxassetid://7733715405"
+-- 元素创建系统优化
+local function Create(name, properties, children)
+    local object = Instance.new(name)
+    for prop, value in pairs(properties or {}) do
+        object[prop] = value
+    end
+    for _, child in ipairs(children or {}) do
+        child.Parent = object
+    end
+    return object
+end
+
+-- 添加圆角效果函数
+local function AddCorner(element, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius or 8)
+    corner.Parent = element
+    return corner
+end
+
+-- 添加描边函数
+local function AddStroke(element, color, thickness)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color or Color3.new(1, 1, 1)
+    stroke.Thickness = thickness or 1
+    stroke.Parent = element
+    return stroke
+end
+
+-- 创建现代化按钮
+CreateElement("ModernButton", function(text, size)
+    local button = Create("TextButton", {
+        Text = text or "",
+        TextColor3 = Color3.new(1, 1, 1),
+        TextSize = 14,
+        Font = Enum.Font.GothamSemibold,
+        BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Accent,
+        AutoButtonColor = false,
+        Size = size or UDim2.new(0, 120, 0, 36)
+    })
+    
+    AddCorner(button, 8)
+    AddStroke(button, Color3.new(0.2, 0.2, 0.3), 1)
+    
+    -- 悬停效果
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.new(
+                OrionLib.Themes[OrionLib.SelectedTheme].Accent.R * 1.2,
+                OrionLib.Themes[OrionLib.SelectedTheme].Accent.G * 1.2,
+                OrionLib.Themes[OrionLib.SelectedTheme].Accent.B * 1.2
+            )
+        }):Play()
+    end)
+    
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.2), {
+            BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Accent
+        }):Play()
+    end)
+    
+    button.MouseButton1Down:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.1), {
+            BackgroundColor3 = Color3.new(
+                OrionLib.Themes[OrionLib.SelectedTheme].Accent.R * 0.8,
+                OrionLib.Themes[OrionLib.SelectedTheme].Accent.G * 0.8,
+                OrionLib.Themes[OrionLib.SelectedTheme].Accent.B * 0.8
+            )
+        }):Play()
+    end)
+    
+    button.MouseButton1Up:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.1), {
+            BackgroundColor3 = Color3.new(
+                OrionLib.Themes[OrionLib.SelectedTheme].Accent.R * 1.2,
+                OrionLib.Themes[OrionLib.SelectedTheme].Accent.G * 1.2,
+                OrionLib.Themes[OrionLib.SelectedTheme].Accent.B * 1.2
+            )
+        }):Play()
+    end)
+    
+    return button
+end)
+
+-- 改进的通知系统
+local NotificationHolder = Create("Frame", {
+    Name = "NotificationHolder",
+    Parent = Orion,
+    Size = UDim2.new(0, 320, 1, -40),
+    Position = UDim2.new(1, -20, 0, 20),
+    AnchorPoint = Vector2.new(1, 0),
+    BackgroundTransparency = 1
+}, {
+    Create("UIListLayout", {
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 10),
+        HorizontalAlignment = Enum.HorizontalAlignment.Right,
+        VerticalAlignment = Enum.VerticalAlignment.Bottom
+    })
+})
+
+function OrionLib:MakeNotification(config)
+    config = config or {}
+    config.Name = config.Name or "通知"
+    config.Content = config.Content or "新消息"
+    config.Time = config.Time or 5
+    config.Icon = config.Icon or "rbxassetid://3926305904" -- 信息图标
+    
+    local notification = Create("Frame", {
+        Size = UDim2.new(1, 0, 0, 0),
+        BackgroundTransparency = 1,
+        AutomaticSize = Enum.AutomaticSize.Y,
+        Parent = NotificationHolder,
+        LayoutOrder = #NotificationHolder:GetChildren()
+    })
+    
+    local mainFrame = Create("Frame", {
+        Size = UDim2.new(1, -10, 0, 0),
+        Position = UDim2.new(0, 10, 0, 0),
+        BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Second,
+        AutomaticSize = Enum.AutomaticSize.Y,
+        Parent = notification
+    })
+    
+    AddCorner(mainFrame, 12)
+    AddStroke(mainFrame, OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 1)
+    
+    local layout = Create("UIListLayout", {
+        Parent = mainFrame,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 8)
+    })
+    
+    local padding = Create("UIPadding", {
+        Parent = mainFrame,
+        PaddingTop = UDim.new(0, 12),
+        PaddingBottom = UDim.new(0, 12),
+        PaddingLeft = UDim.new(0, 16),
+        PaddingRight = UDim.new(0, 16)
+    })
+    
+    -- 标题栏
+    local titleBar = Create("Frame", {
+        Size = UDim2.new(1, 0, 0, 24),
+        BackgroundTransparency = 1,
+        LayoutOrder = 1,
+        Parent = mainFrame
+    })
+    
+    local icon = Create("ImageLabel", {
+        Size = UDim2.new(0, 20, 0, 20),
+        Position = UDim2.new(0, 0, 0.5, 0),
+        AnchorPoint = Vector2.new(0, 0.5),
+        BackgroundTransparency = 1,
+        Image = config.Icon,
+        ImageColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Text,
+        Parent = titleBar
+    })
+    
+    local title = Create("TextLabel", {
+        Size = UDim2.new(1, -30, 1, 0),
+        Position = UDim2.new(0, 30, 0, 0),
+        BackgroundTransparency = 1,
+        Text = config.Name,
+        TextColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Text,
+        TextSize = 16,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Font = Enum.Font.GothamBold,
+        Parent = titleBar
+    })
+    
+    -- 内容
+    local content = Create("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
+        BackgroundTransparency = 1,
+        Text = config.Content,
+        TextColor3 = OrionLib.Themes[OrionLib.SelectedTheme].TextDark,
+        TextSize = 14,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Font = Enum.Font.Gotham,
+        LayoutOrder = 2,
+        Parent = mainFrame
+    })
+    
+    -- 动画
+    notification.Size = UDim2.new(0, 0, 0, 0)
+    mainFrame.Position = UDim2.new(1, 0, 0, 0)
+    
+    TweenService:Create(notification, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+        Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y + 24)
+    }):Play()
+    
+    TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+        Position = UDim2.new(0, 0, 0, 0)
+    }):Play()
+    
+    -- 自动关闭
+    delay(config.Time, function()
+        TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
+            Position = UDim2.new(1, 0, 0, 0)
+        }):Play()
+        
+        wait(0.3)
+        notification:Destroy()
+    end)
+    
+    return notification
+end
+
+-- 现代化的窗口创建
+function OrionLib:MakeWindow(config)
+    config = config or {}
+    config.Name = config.Name or "黑洞中心"
+    config.Size = config.Size or UDim2.new(0, 600, 0, 400)
+    config.Position = config.Position or UDim2.new(0.5, 0, 0.5, 0)
+    config.AnchorPoint = config.AnchorPoint or Vector2.new(0.5, 0.5)
+    config.MinSize = config.MinSize or Vector2.new(300, 200)
+    
+    local window = Create("Frame", {
+        Size = config.Size,
+        Position = config.Position,
+        AnchorPoint = config.AnchorPoint,
+        BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Main,
+        Parent = Orion,
+        ClipsDescendants = true,
+        Active = true
+    })
+    
+    AddCorner(window, 12)
+    AddStroke(window, OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 2)
+    
+    -- 标题栏
+    local titleBar = Create("Frame", {
+        Size = UDim2.new(1, 0, 0, 40),
+        BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Second,
+        Parent = window
+    })
+    
+    AddStroke(titleBar, OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 1)
+    
+    local title = Create("TextLabel", {
+        Size = UDim2.new(1, -100, 1, 0),
+        Position = UDim2.new(0, 50, 0, 0),
+        BackgroundTransparency = 1,
+        Text = config.Name,
+        TextColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Text,
+        TextSize = 18,
+        Font = Enum.Font.GothamBold,
+        Parent = titleBar
+    })
+    
+    local icon = Create("ImageLabel", {
+        Size = UDim2.new(0, 24, 0, 24),
+        Position = UDim2.new(0, 15, 0.5, 0),
+        AnchorPoint = Vector2.new(0, 0.5),
+        BackgroundTransparency = 1,
+        Image = "rbxassetid://7734068321", -- BS脚本图标
+        ImageColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Accent,
+        Parent = titleBar
+    })
+    
+    -- 窗口控制按钮
+    local closeBtn = Create("ImageButton", {
+        Size = UDim2.new(0, 24, 0, 24),
+        Position = UDim2.new(1, -40, 0.5, 0),
+        AnchorPoint = Vector2.new(0, 0.5),
+        BackgroundTransparency = 1,
+        Image = "rbxassetid://3926302087", -- 关闭图标
+        ImageColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Text,
+        Parent = titleBar
+    })
+    
+    local minimizeBtn = Create("ImageButton", {
+        Size = UDim2.new(0, 24, 0, 24),
+        Position = UDim2.new(1, -80, 0.5, 0),
+        AnchorPoint = Vector2.new(0, 0.5),
+        BackgroundTransparency = 1,
+        Image = "rbxassetid://3926302207", -- 最小化图标
+        ImageColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Text,
+        Parent = titleBar
+    })
+    
+    -- 内容容器
+    local contentFrame = Create("Frame", {
+        Size = UDim2.new(1, 0, 1, -40),
+        Position = UDim2.new(0, 0, 0, 40),
+        BackgroundTransparency = 1,
+        Parent = window
+    })
+    
+    -- 标签页容器
+    local tabContainer = Create("Frame", {
+        Size = UDim2.new(1, 0, 0, 40),
+        BackgroundTransparency = 1,
+        Parent = contentFrame
+    })
+    
+    local scrollFrame = Create("ScrollingFrame", {
+        Size = UDim2.new(1, 0, 1, -40),
+        Position = UDim2.new(0, 0, 0, 40),
+        BackgroundTransparency = 1,
+        ScrollBarThickness = 4,
+        ScrollBarImageColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Accent,
+        Parent = contentFrame
+    })
+    
+    -- 窗口交互
+    closeBtn.MouseButton1Click:Connect(function()
+        window.Visible = false
+        OrionLib:MakeNotification({
+            Name = "窗口已关闭",
+            Content = "按右Shift键重新打开窗口",
+            Time = 3
         })
     end)
     
-    -- 创建崩溃特效（增加安全检查）
-    pcall(function()
-        local player = game.Players.LocalPlayer
-        if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            local crashEffect = Instance.new("Part")
-            crashEffect.Anchored = true
-            crashEffect.CanCollide = false
-            crashEffect.Size = Vector3.new(10, 10, 0)
-            crashEffect.CFrame = player.Character.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0)
-            crashEffect.Parent = workspace
-            
-            local mesh = Instance.new("SpecialMesh", crashEffect)
-            mesh.MeshType = Enum.MeshType.Sphere
-            
-            local light = Instance.new("PointLight", crashEffect)
-            light.Color = Color3.fromRGB(255, 0, 0)
-            light.Range = 20
-            light.Brightness = 5
-            
-            game.Debris:AddItem(crashEffect, 3)
-            
-            for i = 1, 0, -0.02 do
-                crashEffect.Transparency = i
-                mesh.Scale = mesh.Scale + Vector3.new(0.5, 0.5, 0)
-                light.Brightness = light.Brightness - 0.5
-                task.wait(0.01)
-            end
+    minimizeBtn.MouseButton1Click:Connect(function()
+        if window.Size.Y.Offset > 40 then
+            TweenService:Create(window, TweenInfo.new(0.3), {
+                Size = UDim2.new(window.Size.X, 0, 40)
+            }):Play()
+        else
+            TweenService:Create(window, TweenInfo.new(0.3), {
+                Size = config.Size
+            }):Play()
         end
     end)
+    
+    -- 窗口拖动功能
+    local dragging, dragInput, dragStart, startPos
+    titleBar.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = window.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    titleBar.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            window.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    
+    -- 快捷键
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.RightShift then
+            window.Visible = not window.Visible
+        end
+    end)
+    
+    -- 标签页系统
+    local tabSystem = {}
+    function tabSystem:AddTab(tabName, tabIcon)
+        local tabButton = Create("TextButton", {
+            Size = UDim2.new(0, 120, 1, 0),
+            BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Second,
+            Text = tabName,
+            TextColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Text,
+            TextSize = 14,
+            Font = Enum.Font.Gotham,
+            Parent = tabContainer
+        })
+        
+        AddCorner(tabButton, 6)
+        
+        local tabIcon = Create("ImageLabel", {
+            Size = UDim2.new(0, 20, 0, 20),
+            Position = UDim2.new(0, 10, 0.5, 0),
+            AnchorPoint = Vector2.new(0, 0.5),
+            BackgroundTransparency = 1,
+            Image = tabIcon or "rbxassetid://3926305904",
+            ImageColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Accent,
+            Parent = tabButton
+        })
+        
+        local tabContent = Create("Frame", {
+            Size = UDim2.new(1, 0, 1, 0),
+            BackgroundTransparency = 1,
+            Visible = false,
+            Parent = scrollFrame
+        })
+        
+        tabButton.MouseButton1Click:Connect(function()
+            for _, child in ipairs(scrollFrame:GetChildren()) do
+                if child:IsA("Frame") then
+                    child.Visible = false
+                end
+            end
+            tabContent.Visible = true
+        end)
+        
+        -- 激活第一个标签
+        if #tabContainer:GetChildren() == 1 then
+            tabContent.Visible = true
+        end
+        
+        -- 元素创建函数
+        local elements = {}
+        function elements:AddButton(btnConfig)
+            local button = MakeElement("ModernButton", btnConfig.Name, UDim2.new(1, -20, 0, 36))
+            button.Parent = tabContent
+            button.Position = UDim2.new(0.5, 0, 0, 20)
+            button.AnchorPoint = Vector2.new(0.5, 0)
+            
+            button.MouseButton1Click:Connect(btnConfig.Callback)
+            
+            return button
+        end
+        
+        function elements:AddLabel(text)
+            local label = Create("TextLabel", {
+                Size = UDim2.new(1, -20, 0, 30),
+                Position = UDim2.new(0.5, 0, 0, 20),
+                AnchorPoint = Vector2.new(0.5, 0),
+                BackgroundTransparency = 1,
+                Text = text,
+                TextColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Text,
+                TextSize = 16,
+                Font = Enum.Font.Gotham,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Parent = tabContent
+            })
+            
+            return label
+        end
+        
+        function elements:AddSection(title)
+            local section = Create("Frame", {
+                Size = UDim2.new(1, -20, 0, 40),
+                Position = UDim2.new(0.5, 0, 0, 20),
+                AnchorPoint = Vector2.new(0.5, 0),
+                BackgroundTransparency = 1,
+                Parent = tabContent
+            })
+            
+            local titleLabel = Create("TextLabel", {
+                Size = UDim2.new(1, 0, 0, 20),
+                BackgroundTransparency = 1,
+                Text = string.upper(title),
+                TextColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Accent,
+                TextSize = 14,
+                Font = Enum.Font.GothamBold,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Parent = section
+            })
+            
+            local line = Create("Frame", {
+                Size = UDim2.new(1, 0, 0, 1),
+                Position = UDim2.new(0, 0, 0, 25),
+                BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Stroke,
+                Parent = section
+            })
+            
+            return {
+                Content = Create("Frame", {
+                    Size = UDim2.new(1, 0, 1, -30),
+                    Position = UDim2.new(0, 0, 0, 30),
+                    BackgroundTransparency = 1,
+                    Parent = section
+                })
+            }
+        end
+        
+        return elements
+    end
+    
+    return tabSystem
 end
+
+-- 初始化完成通知
+delay(1, function()
+    OrionLib:MakeNotification({
+        Name = "黑洞中心已就绪",
+        Content = "使用右Shift键打开/关闭界面",
+        Time = 5,
+        Icon = "rbxassetid://7734068321"
+    })
+end)
+
+return OrionLib'))()
+
+local Window = OrionLib:MakeWindow({
+    Name = "✨ 黑洞中心 | BS脚本 ✨",
+    Size = UDim2.new(0, 600, 0, 450)
+})
+
+local MainTab = Window:AddTab("主界面", "rbxassetid://7734068321")
+
+local section = MainTab:AddSection("用户信息")
+section.Content:AddLabel("用户名: " .. game.Players.LocalPlayer.Name)
+section.Content:AddLabel("注入器: " .. identifyexecutor())
+
+MainTab:AddButton({
+    Name = "开启玩家提示",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/boyscp/scriscriptsc/main/bbn.lua"))()
+    end
+})
