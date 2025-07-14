@@ -123,172 +123,439 @@ local function main()
     safeLoad("https://pastebin.com/raw/9fFu43FF")
     
     -- 加载Orion UI库
-    local OrionLib = safeLoad('local UserInputService = game:GetService("UserInputService")
+    local OrionLib = safeLoad('-- 优化后的Orion UI库 (保持与原脚本兼容)
+local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local LocalPlayer = game:GetService("Players").LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 local HttpService = game:GetService("HttpService")
 
--- 改进的主题系统
 local OrionLib = {
     Elements = {},
     ThemeObjects = {},
     Connections = {},
     Flags = {},
+    -- 优化主题配色，增强对比度和视觉层次
     Themes = {
         Default = {
-            Main = Color3.fromRGB(28, 28, 40),
-            Second = Color3.fromRGB(40, 40, 55),
-            Stroke = Color3.fromRGB(70, 70, 90),
-            Divider = Color3.fromRGB(50, 50, 70),
-            Text = Color3.fromRGB(220, 200, 255),
-            TextDark = Color3.fromRGB(180, 170, 220),
-            Accent = Color3.fromRGB(140, 110, 255)
-        },
-        Dark = {
-            Main = Color3.fromRGB(20, 20, 30),
-            Second = Color3.fromRGB(30, 30, 45),
-            Stroke = Color3.fromRGB(60, 60, 80),
-            Divider = Color3.fromRGB(40, 40, 60),
-            Text = Color3.fromRGB(200, 180, 240),
-            TextDark = Color3.fromRGB(160, 150, 200),
-            Accent = Color3.fromRGB(120, 90, 220)
-        },
-        Light = {
-            Main = Color3.fromRGB(240, 240, 245),
-            Second = Color3.fromRGB(220, 220, 230),
-            Stroke = Color3.fromRGB(180, 180, 190),
-            Divider = Color3.fromRGB(200, 200, 210),
-            Text = Color3.fromRGB(40, 40, 60),
-            TextDark = Color3.fromRGB(80, 80, 100),
-            Accent = Color3.fromRGB(100, 80, 200)
+            Main = Color3.fromRGB(30, 30, 30),
+            Second = Color3.fromRGB(42, 42, 42),
+            Stroke = Color3.fromRGB(65, 65, 65),
+            Divider = Color3.fromRGB(55, 55, 55),
+            Text = Color3.fromRGB(240, 220, 120),
+            TextDark = Color3.fromRGB(200, 200, 180),
+            Highlight = Color3.fromRGB(70, 70, 180) -- 新增高亮色
         }
     },
     SelectedTheme = "Default",
     Folder = nil,
-    SaveCfg = false
+    SaveCfg = false,
+    -- 新增动画参数配置
+    Animation = {
+        TweenTime = 0.3,
+        EasingStyle = Enum.EasingStyle.Quint,
+        EasingDirection = Enum.EasingDirection.Out
+    }
 }
 
--- 图标加载优化
+-- 加载图标 (保持原逻辑)
 local Icons = {}
-local function LoadIcons()
-    local success, response = pcall(function()
-        return HttpService:JSONDecode(game:HttpGetAsync(
-            "https://raw.githubusercontent.com/evoincorp/lucideblox/master/src/modules/util/icons.json"
-        )).icons
-    end)
-    
-    if success then
-        Icons = response
-    else
-        warn("Orion Library - Failed to load Feather Icons: " .. tostring(response))
-        -- 回退到本地图标
-        Icons = {
-            settings = "rbxassetid://3926307971",
-            info = "rbxassetid://3926305904",
-            tools = "rbxassetid://3926309567"
-        }
-    end
-end
-LoadIcons()
-
-local function GetIcon(iconName)
-    return Icons[iconName] or iconName
+local Success, Response = pcall(function()
+    Icons = HttpService:JSONDecode(game:HttpGetAsync("https://raw.githubusercontent.com/evoincorp/lucideblox/master/src/modules/util/icons.json")).icons
+end)
+if not Success then
+    warn("\nOrion Library - Failed to load Feather Icons. Error code: " .. Response .. "\n")
 end
 
--- 创建主界面
+local function GetIcon(IconName)
+    return Icons[IconName] or nil
+end
+
+-- 创建主界面容器 (优化层级结构)
 local Orion = Instance.new("ScreenGui")
-Orion.Name = "OrionUI"
-Orion.ResetOnSpawn = false
+Orion.Name = "Orion"
 Orion.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-if syn and syn.protect_gui then
+if syn then
     syn.protect_gui(Orion)
-    Orion.Parent = game:GetService("CoreGui")
-elseif gethui then
-    Orion.Parent = gethui()
+    Orion.Parent = game.CoreGui
 else
-    Orion.Parent = game:GetService("CoreGui")
+    Orion.Parent = gethui() or game.CoreGui
 end
 
--- 清除旧UI
-for _, interface in ipairs(Orion.Parent:GetChildren()) do
-    if interface.Name == Orion.Name and interface ~= Orion then
-        interface:Destroy()
+-- 清理重复界面
+if gethui then
+    for _, Interface in ipairs(gethui():GetChildren()) do
+        if Interface.Name == Orion.Name and Interface ~= Orion then
+            Interface:Destroy()
+        end
+    end
+else
+    for _, Interface in ipairs(game.CoreGui:GetChildren()) do
+        if Interface.Name == Orion.Name and Interface ~= Orion then
+            Interface:Destroy()
+        end
     end
 end
 
--- 主题管理函数
+-- 核心工具函数 (保持兼容性基础上优化)
+function OrionLib:IsRunning()
+    return gethui() and Orion.Parent == gethui() or Orion.Parent == game:GetService("CoreGui")
+end
+
+local function AddConnection(Signal, Function)
+    if not OrionLib:IsRunning() then return end
+    local conn = Signal:Connect(Function)
+    table.insert(OrionLib.Connections, conn)
+    return conn
+end
+
+-- 自动清理连接
+task.spawn(function()
+    while OrionLib:IsRunning() do task.wait() end
+    for _, conn in ipairs(OrionLib.Connections) do
+        conn:Disconnect()
+    end
+end)
+
+-- 优化拖拽功能，增加平滑动画
+local function MakeDraggable(DragPoint, Main)
+    pcall(function()
+        local dragging, dragInput, mousePos, framePos = false
+        AddConnection(DragPoint.InputBegan, function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                mousePos = input.Position
+                framePos = Main.Position
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end)
+
+        AddConnection(DragPoint.InputChanged, function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement then
+                dragInput = input
+            end
+        end)
+
+        AddConnection(UserInputService.InputChanged, function(input)
+            if input == dragInput and dragging then
+                local delta = input.Position - mousePos
+                local newPos = UDim2.new(
+                    framePos.X.Scale, framePos.X.Offset + delta.X,
+                    framePos.Y.Scale, framePos.Y.Offset + delta.Y
+                )
+                -- 增加平滑移动动画
+                TweenService:Create(
+                    Main,
+                    TweenInfo.new(OrionLib.Animation.TweenTime, OrionLib.Animation.EasingStyle, OrionLib.Animation.EasingDirection),
+                    {Position = newPos}
+                ):Play()
+            end
+        end)
+    end)
+end
+
+-- 创建元素基础函数
+local function Create(name, properties, children)
+    local obj = Instance.new(name)
+    for i, v in pairs(properties or {}) do
+        obj[i] = v
+    end
+    for _, v in pairs(children or {}) do
+        v.Parent = obj
+    end
+    return obj
+end
+
+local function CreateElement(elementName, elementFunction)
+    OrionLib.Elements[elementName] = function(...)
+        return elementFunction(...)
+    end
+end
+
+local function MakeElement(elementName, ...)
+    return OrionLib.Elements[elementName](...)
+end
+
+local function SetProps(element, props)
+    for prop, value in pairs(props) do
+        element[prop] = value
+    end
+    return element
+end
+
+local function SetChildren(element, children)
+    for _, child in pairs(children) do
+        child.Parent = element
+    end
+    return element
+end
+
+-- 工具函数
+local function Round(number, factor)
+    local result = math.floor(number/factor + (math.sign(number) * 0.5)) * factor
+    return result < 0 and result + factor or result
+end
+
+local function ReturnProperty(object)
+    if object:IsA("Frame") or object:IsA("TextButton") then
+        return "BackgroundColor3"
+    elseif object:IsA("ScrollingFrame") then
+        return "ScrollBarImageColor3"
+    elseif object:IsA("UIStroke") then
+        return "Color"
+    elseif object:IsA("TextLabel") or object:IsA("TextBox") then
+        return "TextColor3"
+    elseif object:IsA("ImageLabel") or object:IsA("ImageButton") then
+        return "ImageColor3"
+    end
+end
+
+-- 主题系统优化
+local function AddThemeObject(object, type)
+    OrionLib.ThemeObjects[type] = OrionLib.ThemeObjects[type] or {}
+    table.insert(OrionLib.ThemeObjects[type], object)
+    object[ReturnProperty(object)] = OrionLib.Themes[OrionLib.SelectedTheme][type]
+    return object
+end
+
 function OrionLib:SetTheme(themeName)
-    if self.Themes[themeName] then
-        self.SelectedTheme = themeName
-        for themeType, objects in pairs(self.ThemeObjects) do
-            for _, object in ipairs(objects) do
-                if object and object.Parent then
-                    pcall(function()
-                        local prop = ReturnProperty(object)
-                        if prop then
-                            object[prop] = self.Themes[themeName][themeType]
-                        end
-                    end)
-                end
+    if not OrionLib.Themes[themeName] then return end
+    OrionLib.SelectedTheme = themeName
+    for name, objects in pairs(OrionLib.ThemeObjects) do
+        for _, obj in ipairs(objects) do
+            TweenService:Create(
+                obj,
+                TweenInfo.new(OrionLib.Animation.TweenTime, OrionLib.Animation.EasingStyle),
+                {[ReturnProperty(obj)] = OrionLib.Themes[themeName][name]}
+            ):Play()
         end
-        
-        function elements:AddSection(title)
-            local section = Create("Frame", {
-                Size = UDim2.new(1, -20, 0, 40),
-                Position = UDim2.new(0.5, 0, 0, 20),
-                AnchorPoint = Vector2.new(0.5, 0),
-                BackgroundTransparency = 1,
-                Parent = tabContent
-            })
-            
-            local titleLabel = Create("TextLabel", {
-                Size = UDim2.new(1, 0, 0, 20),
-                BackgroundTransparency = 1,
-                Text = string.upper(title),
-                TextColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Accent,
-                TextSize = 14,
-                Font = Enum.Font.GothamBold,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                Parent = section
-            })
-            
-            local line = Create("Frame", {
-                Size = UDim2.new(1, 0, 0, 1),
-                Position = UDim2.new(0, 0, 0, 25),
-                BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Stroke,
-                Parent = section
-            })
-            
-            return {
-                Content = Create("Frame", {
-                    Size = UDim2.new(1, 0, 1, -30),
-                    Position = UDim2.new(0, 0, 0, 30),
-                    BackgroundTransparency = 1,
-                    Parent = section
-                })
-            }
-        end
-        
-        return elements
     end
-    
-    return tabSystem
 end
 
--- 初始化完成通知
-delay(1, function()
-    OrionLib:MakeNotification({
-        Name = "黑洞中心已就绪",
-        Content = "使用右Shift键打开/关闭界面",
-        Time = 5,
-        Icon = "rbxassetid://7734068321"
+-- 颜色处理函数
+local function PackColor(color)
+    return {R = color.R * 255, G = color.G * 255, B = color.B * 255}
+end
+
+local function UnpackColor(color)
+    return Color3.fromRGB(color.R, color.G, color.B)
+end
+
+-- 配置加载保存
+local function LoadCfg(config)
+    local data = HttpService:JSONDecode(config)
+    for a, b in pairs(data) do
+        if OrionLib.Flags[a] then
+            task.spawn(function()
+                if OrionLib.Flags[a].Type == "Colorpicker" then
+                    OrionLib.Flags[a]:Set(UnpackColor(b))
+                else
+                    OrionLib.Flags[a]:Set(b)
+                end
+            end)
+        else
+            warn("Orion Library Config Loader - Could not find ", a ,b)
+        end
+    end
+end
+
+local function SaveCfg(name)
+    local data = {}
+    for i, v in pairs(OrionLib.Flags) do
+        if v.Save then
+            data[i] = v.Type == "Colorpicker" and PackColor(v.Value) or v.Value
+        end
+    end
+    writefile(OrionLib.Folder .. "/" .. name .. ".txt", HttpService:JSONEncode(data))
+end
+
+-- 输入处理
+local WhitelistedMouse = {Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2, Enum.UserInputType.MouseButton3}
+local BlacklistedKeys = {Enum.KeyCode.Unknown, Enum.KeyCode.W, Enum.KeyCode.A, Enum.KeyCode.S, Enum.KeyCode.D, 
+    Enum.KeyCode.Up, Enum.KeyCode.Left, Enum.KeyCode.Down, Enum.KeyCode.Right, Enum.KeyCode.Slash, 
+    Enum.KeyCode.Tab, Enum.KeyCode.Backspace, Enum.KeyCode.Escape}
+
+local function CheckKey(table, key)
+    for _, v in ipairs(table) do
+        if v == key then return true end
+    end
+    return false
+end
+
+-- 创建基础UI元素 (增强视觉效果)
+CreateElement("Corner", function(scale, offset)
+    return Create("UICorner", {
+        CornerRadius = UDim.new(scale or 0, offset or 8)
     })
 end)
 
-return OrionLib')
+CreateElement("Stroke", function(color, thickness)
+    return Create("UIStroke", {
+        Color = color or Color3.fromRGB(255, 255, 255),
+        Thickness = thickness or 1,
+        Transparency = 0.3 -- 轻微透明增强层次感
+    })
+end)
+
+CreateElement("List", function(scale, offset)
+    return Create("UIListLayout", {
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(scale or 0, offset or 6)
+    })
+end)
+
+CreateElement("Padding", function(bottom, left, right, top)
+    return Create("UIPadding", {
+        PaddingBottom = UDim.new(0, bottom or 6),
+        PaddingLeft = UDim.new(0, left or 6),
+        PaddingRight = UDim.new(0, right or 6),
+        PaddingTop = UDim.new(0, top or 6)
+    })
+end)
+
+CreateElement("TFrame", function()
+    return Create("Frame", {BackgroundTransparency = 1})
+end)
+
+CreateElement("Frame", function(color)
+    return Create("Frame", {
+        BackgroundColor3 = color or Color3.fromRGB(255, 255, 255),
+        BorderSizePixel = 0
+    })
+end)
+
+CreateElement("RoundFrame", function(color, scale, offset)
+    return Create("Frame", {
+        BackgroundColor3 = color or Color3.fromRGB(255, 255, 255),
+        BorderSizePixel = 0
+    }, {
+        Create("UICorner", {
+            CornerRadius = UDim.new(scale or 0, offset or 8)
+        })
+    })
+end)
+
+CreateElement("Button", function()
+    local btn = Create("TextButton", {
+        Text = "",
+        AutoButtonColor = false,
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0
+    })
+    -- 增加悬停效果
+    local highlight = Create("Frame", {
+        BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Highlight,
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, 0),
+        ZIndex = -1
+    }, {Create("UICorner", {CornerRadius = UDim.new(0, 8)})})
+    highlight.Parent = btn
+    
+    AddConnection(btn.MouseEnter, function()
+        TweenService:Create(highlight, TweenInfo.new(0.2), {BackgroundTransparency = 0.2}):Play()
+    end)
+    
+    AddConnection(btn.MouseLeave, function()
+        TweenService:Create(highlight, TweenInfo.new(0.2), {BackgroundTransparency = 1}):Play()
+    end)
+    
+    return btn
+end)
+
+-- 通知系统优化 (增加动画效果)
+local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
+    SetProps(MakeElement("List"), {
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        VerticalAlignment = Enum.VerticalAlignment.Bottom,
+        Padding = UDim.new(0, 8)
+    })
+}), {
+    Position = UDim2.new(1, -20, 1, -20),
+    Size = UDim2.new(0, 320, 1, -40),
+    AnchorPoint = Vector2.new(1, 1),
+    Parent = Orion
+})
+
+function OrionLib:MakeNotification(config)
+    task.spawn(function()
+        config = config or {}
+        config.Name = config.Name or "Notification"
+        config.Content = config.Content or "Test"
+        config.Image = config.Image or "rbxassetid://4384403532"
+        config.Time = config.Time or 5
+        
+        local notificationParent = SetProps(MakeElement("TFrame"), {
+            Size = UDim2.new(1, 0, 0, 0),
+            AutomaticSize = Enum.AutomaticSize.Y,
+            Parent = NotificationHolder
+        })
+        
+        local notificationFrame = SetChildren(SetProps(MakeElement("RoundFrame", OrionLib.Themes[OrionLib.SelectedTheme].Second, 0, 10), {
+            Parent = notificationParent,
+            Size = UDim2.new(1, 0, 0, 0),
+            Position = UDim2.new(1, 20, 0, 0),
+            BackgroundTransparency = 0,
+            AutomaticSize = Enum.AutomaticSize.Y,
+            ZIndex = 2
+        }), {
+            MakeElement("Stroke", OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 1),
+            MakeElement("Padding", 12, 12, 12, 12),
+            SetProps(MakeElement("Image", config.Image), {
+                Size = UDim2.new(0, 22, 0, 22),
+                ImageColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Text,
+                Name = "Icon"
+            }),
+            SetProps(MakeElement("Label", config.Name, 16), {
+                Size = UDim2.new(1, -35, 0, 22),
+                Position = UDim2.new(0, 35, 0, 0),
+                Font = Enum.Font.GothamBold,
+                Name = "Title",
+                TextColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Text
+            }),
+            SetProps(MakeElement("Label", config.Content, 14), {
+                Size = UDim2.new(1, 0, 0, 0),
+                Position = UDim2.new(0, 0, 0, 28),
+                Font = Enum.Font.GothamSemibold,
+                Name = "Content",
+                AutomaticSize = Enum.AutomaticSize.Y,
+                TextColor3 = OrionLib.Themes[OrionLib.SelectedTheme].TextDark,
+                TextWrapped = true
+            })
+        })
+        
+        -- 滑入动画
+        TweenService:Create(
+            notificationFrame,
+            TweenInfo.new(0.4, Enum.EasingStyle.Quint),
+            {Position = UDim2.new(0, 0, 0, 0)}
+        ):Play()
+        
+        -- 淡出动画
+        task.wait(config.Time - 1)
+        TweenService:Create(notificationFrame.Icon, TweenInfo.new(0.4), {ImageTransparency = 1}):Play()
+        TweenService:Create(notificationFrame, TweenInfo.new(0.6), {BackgroundTransparency = 0.7}):Play()
+        task.wait(0.3)
+        TweenService:Create(notificationFrame.UIStroke, TweenInfo.new(0.5), {Transparency = 0.9}):Play()
+        TweenService:Create(notificationFrame.Title, TweenInfo.new(0.5), {TextTransparency = 0.5}):Play()
+        TweenService:Create(notificationFrame.Content, TweenInfo.new(0.5), {TextTransparency = 0.6}):Play()
+        
+        -- 滑出动画
+        task.wait(0.1)
+        notificationFrame:TweenPosition(UDim2.new(1, 20, 0, 0), "In", "Quint", 0.5, true)
+        task.wait(0.6)
+        notificationFrame:Destroy()
+    end)
+end
+
+-- 窗口创建函数 (增强视觉效果和交互)
+function
+')
     if not OrionLib then return end
     
     -- 显示初始通知
